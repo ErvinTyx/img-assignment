@@ -1,0 +1,1123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PARKSON - Parking Violation Detection System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .upload-section {
+            padding: 30px;
+            background: linear-gradient(45deg, #f8f9fa, #e9ecef);
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .upload-zone {
+            border: 3px dashed #007bff;
+            border-radius: 15px;
+            padding: 40px;
+            text-align: center;
+            background: white;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .upload-zone:hover {
+            border-color: #0056b3;
+            background: #f8f9ff;
+            transform: translateY(-2px);
+        }
+
+        .upload-zone.dragover {
+            border-color: #28a745;
+            background: #f0fff4;
+        }
+
+        .upload-icon {
+            font-size: 4rem;
+            color: #007bff;
+            margin-bottom: 20px;
+        }
+
+        .work-area {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 20px;
+            padding: 30px;
+        }
+
+        .canvas-container {
+            position: relative;
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            min-height: 500px;
+        }
+
+        .image-canvas {
+            width: 100%;
+            max-width: 100%;
+            border-radius: 10px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+
+        .controls-panel {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            height: fit-content;
+        }
+
+        .zone-tools {
+            margin-bottom: 25px;
+        }
+
+        .zone-tools h3 {
+            margin-bottom: 15px;
+            color: #495057;
+            font-size: 1.1rem;
+        }
+
+        .zone-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .zone-btn {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+        }
+
+        .zone-btn.vip {
+            background: #ffd700;
+            color: #333;
+        }
+
+        .zone-btn.standard {
+            background: #28a745;
+            color: white;
+        }
+
+        .zone-btn.handicap {
+            background: #007bff;
+            color: white;
+        }
+
+        .zone-btn.no-parking {
+            background: #dc3545;
+            color: white;
+        }
+
+        .zone-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .zone-btn.active {
+            box-shadow: 0 0 0 3px rgba(0,123,255,0.3);
+        }
+
+        .action-buttons {
+            display: grid;
+            gap: 10px;
+            margin-bottom: 25px;
+        }
+
+        .btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            font-size: 1rem;
+        }
+
+        .btn-primary {
+            background: #007bff;
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .results-section {
+            background: #f8f9fa;
+            border-top: 1px solid #dee2e6;
+        }
+
+        .results-tabs {
+            display: flex;
+            background: #e9ecef;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 15px 20px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .tab-btn.active {
+            background: #f8f9fa;
+            border-bottom: 3px solid #007bff;
+        }
+
+        .tab-content {
+            padding: 25px;
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .comparison-table th,
+        .comparison-table td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .comparison-table th {
+            background: #007bff;
+            color: white;
+            font-weight: 600;
+        }
+
+        .comparison-table tr:hover {
+            background: #f8f9fa;
+        }
+
+        .violation-item {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-left: 5px solid #dc3545;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+        }
+
+        .violation-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+        }
+
+        .violation-item.critical {
+            border-left-color: #dc3545;
+            background: #fff5f5;
+        }
+
+        .violation-item.high {
+            border-left-color: #fd7e14;
+            background: #fff8f0;
+        }
+
+        .violation-item.medium {
+            border-left-color: #ffc107;
+            background: #fffdf0;
+        }
+
+        .violation-item.low {
+            border-left-color: #6c757d;
+            background: #f8f9fa;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-indicator.success {
+            background: #28a745;
+        }
+
+        .status-indicator.warning {
+            background: #ffc107;
+        }
+
+        .status-indicator.error {
+            background: #dc3545;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #6c757d;
+        }
+
+        .loading-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #007bff;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #007bff;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+
+        .alert {
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert-warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+
+        .alert-danger {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        @media (max-width: 768px) {
+            .work-area {
+                grid-template-columns: 1fr;
+            }
+            
+            .zone-buttons {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        #file-input {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🅿️ PARKSON</h1>
+            <p>Advanced Parking Violation Detection System</p>
+        </div>
+
+        <div class="main-content">
+            <!-- Upload Section -->
+            <div class="upload-section">
+                <div class="upload-zone" id="upload-zone">
+                    <div class="upload-icon">📁</div>
+                    <h3>Upload Parking Lot Image</h3>
+                    <p>Drag and drop an image or click to select</p>
+                    <p style="font-size: 0.9rem; color: #6c757d; margin-top: 10px;">
+                        Supported formats: JPG, PNG, GIF, BMP (Max 10MB)
+                    </p>
+                </div>
+                <input type="file" id="file-input" accept="image/*">
+            </div>
+
+            <!-- Work Area -->
+            <div class="work-area" id="work-area" style="display: none;">
+                <div class="canvas-container">
+                    <canvas id="image-canvas"></canvas>
+                </div>
+
+                <div class="controls-panel">
+                    <div class="zone-tools">
+                        <h3>🎯 Zone Drawing Tools</h3>
+                        <div class="zone-buttons">
+                            <button class="zone-btn vip" data-zone="vip">👑 VIP Zone</button>
+                            <button class="zone-btn standard" data-zone="standard">🚗 Standard</button>
+                            <button class="zone-btn handicap" data-zone="handicap">♿ Handicap</button>
+                            <button class="zone-btn no-parking" data-zone="no-parking">🚫 No Parking</button>
+                        </div>
+                        <p style="font-size: 0.8rem; color: #6c757d;">
+                            Click a zone type, then click on the image to draw polygon points. Double-click to finish.
+                        </p>
+                    </div>
+
+                    <div class="action-buttons">
+                        <button class="btn btn-primary" id="analyze-btn" disabled>
+                            🤖 Analyze Violations
+                        </button>
+                        <button class="btn btn-secondary" id="clear-zones-btn">
+                            🗑️ Clear Zones
+                        </button>
+                        <button class="btn btn-danger" id="reset-btn">
+                            🔄 Reset All
+                        </button>
+                    </div>
+
+                    <div class="stats-display" id="stats-display" style="display: none;">
+                        <h4>📊 Quick Stats</h4>
+                        <div class="stat-card">
+                            <div class="stat-value" id="zone-count">0</div>
+                            <div class="stat-label">Zones Defined</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Results Section -->
+            <div class="results-section" id="results-section" style="display: none;">
+                <div class="results-tabs">
+                    <button class="tab-btn active" data-tab="comparison">📊 Algorithm Comparison</button>
+                    <button class="tab-btn" data-tab="violations">⚠️ Violations</button>
+                    <button class="tab-btn" data-tab="occupancy">📈 Occupancy</button>
+                </div>
+
+                <!-- Algorithm Comparison Tab -->
+                <div class="tab-content active" id="comparison-tab">
+                    <h3>🤖 Detection Algorithm Performance</h3>
+                    <table class="comparison-table" id="comparison-table">
+                        <thead>
+                            <tr>
+                                <th>Algorithm</th>
+                                <th>Vehicles Detected</th>
+                                <th>Processing Time (s)</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="comparison-tbody">
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Violations Tab -->
+                <div class="tab-content" id="violations-tab">
+                    <h3>⚠️ Detected Violations</h3>
+                    <div id="violations-container">
+                        <div class="loading">
+                            <div class="loading-spinner"></div>
+                            <p>No analysis performed yet</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Occupancy Tab -->
+                <div class="tab-content" id="occupancy-tab">
+                    <h3>📈 Parking Occupancy Analysis</h3>
+                    <div class="stats-grid" id="occupancy-stats">
+                        <div class="stat-card">
+                            <div class="stat-value" id="total-occupancy">0%</div>
+                            <div class="stat-label">Overall Occupancy</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="total-vehicles">0</div>
+                            <div class="stat-label">Vehicles Detected</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="total-zones">0</div>
+                            <div class="stat-label">Total Zones</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="violation-count">0</div>
+                            <div class="stat-label">Violations Found</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let currentImage = null;
+        let canvas = null;
+        let ctx = null;
+        let zones = [];
+        let currentZoneType = null;
+        let currentZonePoints = [];
+        let isDrawing = false;
+        let analysisResults = null;
+
+        // Initialize application
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeEventListeners();
+            initializeCanvas();
+        });
+
+        function initializeEventListeners() {
+            // File upload
+            const uploadZone = document.getElementById('upload-zone');
+            const fileInput = document.getElementById('file-input');
+
+            uploadZone.addEventListener('click', () => fileInput.click());
+            uploadZone.addEventListener('dragover', handleDragOver);
+            uploadZone.addEventListener('drop', handleDrop);
+            fileInput.addEventListener('change', handleFileSelect);
+
+            // Zone tools
+            document.querySelectorAll('.zone-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    selectZoneType(this.dataset.zone);
+                });
+            });
+
+            // Action buttons
+            document.getElementById('analyze-btn').addEventListener('click', analyzeImage);
+            document.getElementById('clear-zones-btn').addEventListener('click', clearZones);
+            document.getElementById('reset-btn').addEventListener('click', resetAll);
+
+            // Tab switching
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    switchTab(this.dataset.tab);
+                });
+            });
+        }
+
+        function initializeCanvas() {
+            canvas = document.getElementById('image-canvas');
+            ctx = canvas.getContext('2d');
+            
+            canvas.addEventListener('click', handleCanvasClick);
+            canvas.addEventListener('dblclick', finishZone);
+            canvas.addEventListener('mousemove', handleMouseMove);
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.currentTarget.classList.add('dragover');
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            e.currentTarget.classList.remove('dragover');
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        }
+
+        function handleFileSelect(e) {
+            const file = e.target.files[0];
+            if (file) {
+                handleFile(file);
+            }
+        }
+
+        function handleFile(file) {
+            // Validate file
+            if (!file.type.startsWith('image/')) {
+                alert('Please select an image file.');
+                return;
+            }
+
+            if (file.size > 10 * 1024 * 1024) {
+                alert('File size must be less than 10MB.');
+                return;
+            }
+
+            // Upload file
+            const formData = new FormData();
+            formData.append('file', file);
+
+            fetch('/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    loadImage(data.filename);
+                } else {
+                    alert('Upload failed: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Upload error:', error);
+                alert('Upload failed. Please try again.');
+            });
+        }
+
+        function loadImage(filename) {
+            const img = new Image();
+            img.onload = function() {
+                currentImage = {
+                    element: img,
+                    filename: filename,
+                    width: img.width,
+                    height: img.height
+                };
+
+                // Setup canvas
+                const containerWidth = canvas.parentElement.clientWidth - 40;
+                const containerHeight = Math.min(600, img.height * (containerWidth / img.width));
+                
+                canvas.width = containerWidth;
+                canvas.height = containerHeight;
+                
+                // Draw image
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+                // Show work area
+                document.getElementById('work-area').style.display = 'grid';
+                
+                // Reset zones and analysis
+                zones = [];
+                analysisResults = null;
+                updateUI();
+            };
+            
+            img.src = '/uploads/' + filename;
+        }
+
+        function selectZoneType(zoneType) {
+            // Update active zone button
+            document.querySelectorAll('.zone-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelector(`[data-zone="${zoneType}"]`).classList.add('active');
+            
+            currentZoneType = zoneType;
+            currentZonePoints = [];
+            isDrawing = true;
+            
+            canvas.style.cursor = 'crosshair';
+        }
+
+        function handleCanvasClick(e) {
+            if (!isDrawing || !currentZoneType) return;
+
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            currentZonePoints.push([x, y]);
+            redrawCanvas();
+        }
+
+        function handleMouseMove(e) {
+            if (!isDrawing || currentZonePoints.length === 0) return;
+
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            redrawCanvas();
+            
+            // Draw temporary line to cursor
+            ctx.strokeStyle = getZoneColor(currentZoneType);
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 5]);
+            ctx.beginPath();
+            ctx.moveTo(currentZonePoints[currentZonePoints.length - 1][0], 
+                      currentZonePoints[currentZonePoints.length - 1][1]);
+            ctx.lineTo(x, y);
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
+
+        function finishZone(e) {
+            if (!isDrawing || currentZonePoints.length < 3) return;
+
+            e.preventDefault();
+            
+            const zone = {
+                id: 'zone_' + Date.now(),
+                type: currentZoneType,
+                points: [...currentZonePoints],
+                color: getZoneColor(currentZoneType)
+            };
+
+            zones.push(zone);
+            
+            // Reset drawing state
+            currentZoneType = null;
+            currentZonePoints = [];
+            isDrawing = false;
+            canvas.style.cursor = 'default';
+            
+            // Clear active zone button
+            document.querySelectorAll('.zone-btn').forEach(btn => btn.classList.remove('active'));
+            
+            updateUI();
+            redrawCanvas();
+        }
+
+        function getZoneColor(zoneType) {
+            const colors = {
+                'vip': '#FFD700',
+                'standard': '#28A745',
+                'handicap': '#007BFF',
+                'no-parking': '#DC3545'
+            };
+            return colors[zoneType] || '#6C757D';
+        }
+
+        function redrawCanvas() {
+            if (!currentImage) return;
+
+            // Clear and redraw image
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(currentImage.element, 0, 0, canvas.width, canvas.height);
+
+            // Draw existing zones
+            zones.forEach(zone => drawZone(zone));
+
+            // Draw current zone being drawn
+            if (currentZonePoints.length > 0) {
+                drawCurrentZone();
+            }
+
+            // Draw detection results if available
+            if (analysisResults) {
+                drawDetections();
+            }
+        }
+
+        function drawZone(zone) {
+            if (zone.points.length < 3) return;
+
+            ctx.fillStyle = zone.color + '40'; // Semi-transparent
+            ctx.strokeStyle = zone.color;
+            ctx.lineWidth = 3;
+
+            ctx.beginPath();
+            ctx.moveTo(zone.points[0][0], zone.points[0][1]);
+            
+            for (let i = 1; i < zone.points.length; i++) {
+                ctx.lineTo(zone.points[i][0], zone.points[i][1]);
+            }
+            
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            // Draw zone label
+            const centerX = zone.points.reduce((sum, p) => sum + p[0], 0) / zone.points.length;
+            const centerY = zone.points.reduce((sum, p) => sum + p[1], 0) / zone.points.length;
+            
+            ctx.fillStyle = '#FFFFFF';
+            ctx.strokeStyle = '#000000';
+            ctx.lineWidth = 1;
+            ctx.font = 'bold 14px Arial';
+            ctx.textAlign = 'center';
+            
+            const label = zone.type.toUpperCase().replace('-', ' ');
+            ctx.strokeText(label, centerX, centerY);
+            ctx.fillText(label, centerX, centerY);
+        }
+
+        function drawCurrentZone() {
+            if (currentZonePoints.length < 2) return;
+
+            ctx.strokeStyle = getZoneColor(currentZoneType);
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 5]);
+
+            ctx.beginPath();
+            ctx.moveTo(currentZonePoints[0][0], currentZonePoints[0][1]);
+            
+            for (let i = 1; i < currentZonePoints.length; i++) {
+                ctx.lineTo(currentZonePoints[i][0], currentZonePoints[i][1]);
+            }
+            
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Draw points
+            currentZonePoints.forEach(point => {
+                ctx.fillStyle = getZoneColor(currentZoneType);
+                ctx.beginPath();
+                ctx.arc(point[0], point[1], 4, 0, 2 * Math.PI);
+                ctx.fill();
+            });
+        }
+
+        function drawDetections() {
+            if (!analysisResults || !analysisResults.detections.yolov8) return;
+
+            const detections = analysisResults.detections.yolov8.detections;
+            const scaleX = canvas.width / currentImage.width;
+            const scaleY = canvas.height / currentImage.height;
+
+            detections.forEach((detection, index) => {
+                const [x1, y1, x2, y2] = detection.bbox;
+                
+                // Scale coordinates to canvas size
+                const canvasX1 = x1 * scaleX;
+                const canvasY1 = y1 * scaleY;
+                const canvasX2 = x2 * scaleX;
+                const canvasY2 = y2 * scaleY;
+
+                // Draw bounding box
+                ctx.strokeStyle = '#00FF00';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(canvasX1, canvasY1, canvasX2 - canvasX1, canvasY2 - canvasY1);
+
+                // Draw label
+                ctx.fillStyle = '#00FF00';
+                ctx.font = '12px Arial';
+                ctx.textAlign = 'left';
+                
+                const label = `${detection.cls_name} (${(detection.conf * 100).toFixed(1)}%)`;
+                const textWidth = ctx.measureText(label).width;
+                
+                ctx.fillRect(canvasX1, canvasY1 - 20, textWidth + 8, 20);
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillText(label, canvasX1 + 4, canvasY1 - 6);
+            });
+
+            // Highlight violations
+            if (analysisResults.violations) {
+                analysisResults.violations.forEach(violation => {
+                    const detection = detections[violation.vehicle_detection_idx];
+                    if (detection) {
+                        const [x1, y1, x2, y2] = detection.bbox;
+                        const canvasX1 = x1 * scaleX;
+                        const canvasY1 = y1 * scaleY;
+                        const canvasX2 = x2 * scaleX;
+                        const canvasY2 = y2 * scaleY;
+
+                        // Draw violation highlight
+                        ctx.strokeStyle = '#FF0000';
+                        ctx.lineWidth = 4;
+                        ctx.setLineDash([10, 5]);
+                        ctx.strokeRect(canvasX1 - 2, canvasY1 - 2, 
+                                     canvasX2 - canvasX1 + 4, canvasY2 - canvasY1 + 4);
+                        ctx.setLineDash([]);
+                    }
+                });
+            }
+        }
+
+        function clearZones() {
+            zones = [];
+            currentZonePoints = [];
+            currentZoneType = null;
+            isDrawing = false;
+            canvas.style.cursor = 'default';
+            
+            document.querySelectorAll('.zone-btn').forEach(btn => btn.classList.remove('active'));
+            
+            updateUI();
+            redrawCanvas();
+        }
+
+        function resetAll() {
+            currentImage = null;
+            zones = [];
+            analysisResults = null;
+            currentZonePoints = [];
+            currentZoneType = null;
+            isDrawing = false;
+            
+            document.getElementById('work-area').style.display = 'none';
+            document.getElementById('results-section').style.display = 'none';
+            document.getElementById('file-input').value = '';
+            
+            canvas.style.cursor = 'default';
+            document.querySelectorAll('.zone-btn').forEach(btn => btn.classList.remove('active'));
+            
+            updateUI();
+        }
+
+        function updateUI() {
+            // Update zone count
+            document.getElementById('zone-count').textContent = zones.length;
+            
+            // Enable/disable analyze button
+            const analyzeBtn = document.getElementById('analyze-btn');
+            analyzeBtn.disabled = !currentImage || zones.length === 0;
+            
+            // Show/hide stats
+            const statsDisplay = document.getElementById('stats-display');
+            statsDisplay.style.display = zones.length > 0 ? 'block' : 'none';
+        }
+
+        function analyzeImage() {
+            if (!currentImage || zones.length === 0) return;
+
+            const analyzeBtn = document.getElementById('analyze-btn');
+            analyzeBtn.disabled = true;
+            analyzeBtn.textContent = '🔄 Analyzing...';
+
+            // Convert zones to proper format
+            const zonesData = zones.map(zone => ({
+                id: zone.id,
+                type: zone.type,
+                points: zone.points.map(point => [
+                    point[0] * (currentImage.width / canvas.width),
+                    point[1] * (currentImage.height / canvas.height)
+                ])
+            }));
+
+            fetch('/analyze', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    filename: currentImage.filename,
+                    zones: zonesData
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert('Analysis failed: ' + data.error);
+                    return;
+                }
+
+                analysisResults = data;
+                displayResults(data);
+                redrawCanvas();
+                
+                // Show results section
+                document.getElementById('results-section').style.display = 'block';
+            })
+            .catch(error => {
+                console.error('Analysis error:', error);
+                alert('Analysis failed. Please try again.');
+            })
+            .finally(() => {
+                analyzeBtn.disabled = false;
+                analyzeBtn.textContent = '🤖 Analyze Violations';
+            });
+        }
+
+        function displayResults(data) {
+            // Update comparison table
+            updateComparisonTable(data.detections);
+            
+            // Update violations
+            updateViolationsDisplay(data.violations);
+            
+            // Update occupancy stats
+            updateOccupancyStats(data);
+        }
+
+        function updateComparisonTable(detections) {
+            const tbody = document.getElementById('comparison-tbody');
+            tbody.innerHTML = '';
+
+            Object.entries(detections).forEach(([algorithm, results]) => {
+                const row = document.createElement('tr');
+                
+                const statusClass = results.error ? 'error' : 'success';
+                const statusText = results.error ? 'Error' : 'Success';
+                const vehicleCount = results.error ? 'N/A' : results.vehicle_count;
+                const processingTime = results.error ? 'N/A' : results.processing_time + 's';
+
+                row.innerHTML = `
+                    <td>${results.display_name || algorithm}</td>
+                    <td>${vehicleCount}</td>
+                    <td>${processingTime}</td>
+                    <td>
+                        <span class="status-indicator ${statusClass}"></span>
+                        ${statusText}
+                    </td>
+                `;
+                
+                tbody.appendChild(row);
+            });
+        }
+
+        function updateViolationsDisplay(violations) {
+            const container = document.getElementById('violations-container');
+            
+            if (!violations || violations.length === 0) {
+                container.innerHTML = `
+                    <div class="alert alert-success">
+                        <strong>✅ No violations detected!</strong><br>
+                        All vehicles appear to be parked in appropriate zones.
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = '';
+            
+            // Add summary alert
+            const severityCounts = violations.reduce((acc, v) => {
+                acc[v.severity] = (acc[v.severity] || 0) + 1;
+                return acc;
+            }, {});
+
+            const alertClass = severityCounts.critical ? 'alert-danger' : 
+                             severityCounts.high ? 'alert-warning' : 'alert-warning';
+            
+            const summary = document.createElement('div');
+            summary.className = `alert ${alertClass}`;
+            summary.innerHTML = `
+                <strong>⚠️ ${violations.length} violation(s) detected!</strong><br>
+                ${Object.entries(severityCounts).map(([severity, count]) => 
+                    `${count} ${severity} priority`).join(', ')}
+            `;
+            container.appendChild(summary);
+
+            // Add individual violations
+            violations.forEach(violation => {
+                const item = document.createElement('div');
+                item.className = `violation-item ${violation.severity}`;
+                
+                item.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: start;">
+                        <div>
+                            <h5 style="margin: 0 0 10px 0; color: #333;">
+                                ${violation.violation_type.replace('_', ' ').toUpperCase()}
+                            </h5>
+                            <p style="margin: 0 0 5px 0;">${violation.message}</p>
+                            <small style="color: #6c757d;">
+                                Zone: ${violation.zone_type} | Vehicle: ${violation.vehicle_type} | 
+                                Confidence: ${(violation.vehicle_confidence * 100).toFixed(1)}%
+                            </small>
+                        </div>
+                        <span class="badge" style="background: var(--bs-${violation.severity}); color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem;">
+                            ${violation.severity.toUpperCase()}
+                        </span>
+                    </div>
+                `;
+                
+                container.appendChild(item);
+            });
+        }
+
+        function updateOccupancyStats(data) {
+            document.getElementById('total-occupancy').textContent = data.occupancy + '%';
+            document.getElementById('total-vehicles').textContent = 
+                data.detections.yolov8 ? data.detections.yolov8.vehicle_count : 0;
+            document.getElementById('total-zones').textContent = zones.length;
+            document.getElementById('violation-count').textContent = 
+                data.violations ? data.violations.length : 0;
+        }
+
+        function switchTab(tabName) {
+            // Update tab buttons
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+            
+            // Update tab content
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            document.getElementById(`${tabName}-tab`).classList.add('active');
+        }
+    </script>
+</body>
+</html>

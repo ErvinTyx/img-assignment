@@ -1,0 +1,56 @@
+# PARKSON - Parking Violation Detection System
+# Core Dependencies
+
+# Deep Learning Frameworks
+torch>=1.12.0
+torchvision>=0.13.0
+ultralytics>=8.0.0
+
+# Web Framework
+Flask>=2.3.0
+Werkzeug>=2.3.0
+
+# Computer Vision
+opencv-python>=4.8.0
+Pillow>=9.5.0
+
+# Scientific Computing
+numpy>=1.24.0
+scipy>=1.10.0
+
+# Geometry Processing
+shapely>=2.0.0
+
+# Data Processing
+pandas>=2.0.0
+
+# HTTP Requests (for model downloads)
+requests>=2.31.0
+
+# Image Processing
+imageio>=2.31.0
+
+# Development Dependencies
+pytest>=7.4.0
+pytest-cov>=4.1.0
+black>=23.7.0
+flake8>=6.0.0
+
+# Production Dependencies
+gunicorn>=21.2.0
+redis>=4.6.0  # For caching in production
+
+# Optional GPU Acceleration
+# Uncomment for CUDA support:
+# torch-audio>=0.12.0
+# torchaudio>=0.12.0
+
+# Model Quantization (Intel)
+openvino>=2023.1.0
+
+# Monitoring (Production)
+prometheus-client>=0.17.0
+psutil>=5.9.0
+
+# Security
+cryptography>=41.0.0
