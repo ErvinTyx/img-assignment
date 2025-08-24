@@ -1,0 +1,5 @@
+names:
+- car
+nc: 1
+train: ../images/train
+val: ../images/val
