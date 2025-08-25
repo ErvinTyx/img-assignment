@@ -30,11 +30,10 @@ class ZoneAnalyzer:
         
         # Define allowed vehicles per zone type
         self.zone_rules = {
-            'vip': ['car', 'motorcycle'],
-            'standard': ['car', 'motorcycle', 'bus', 'truck'],
+            'vip': ['car'],
+            'standard': ['car'],
             'handicap': ['car'],  # Requires special validation
             'no_parking': [],     # No vehicles allowed
-            'loading': ['truck', 'bus'],  # Commercial vehicles only
         }
         
         # Violation severity levels

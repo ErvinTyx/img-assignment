@@ -1,5 +1,4 @@
 import torch
-import torchvision
 import cv2
 import numpy as np
 from ultralytics import YOLO
@@ -13,129 +12,124 @@ import warnings
 warnings.filterwarnings("ignore")
 logger = logging.getLogger(__name__)
 
-# Vehicle class IDs for COCO dataset
-VEHICLE_CLASSES = {
-    'car': 2,
-    'motorcycle': 3,
-    'bus': 5,
-    'truck': 7
-}
+
 
 class ModelLoadError(Exception):
     """Custom exception for model loading errors"""
     pass
 
-class YOLOv8Detector:
+
+class YOLODetector:
     """
-    YOLOv8 Object Detection - Optimized for speed/accuracy balance
+    Generic YOLO Detector for YOLOv8 / YOLOv10 / YOLOv11 / YOLOv12
     
     BUSINESS RULE: Detect vehicles (cars, motorcycles, buses, trucks)
     PERFORMANCE TARGET: ≥90% mAP, <5s processing time (1080p)
     """
-    
-    def __init__(self, model_size='n', confidence_threshold=0.5):
+
+    def __init__(self, model_path="yolov8n.pt", confidence_threshold=0.5):
         """
-        Initialize YOLOv8 detector
-        
+        Initialize YOLO detector
+
         Args:
-            model_size (str): Model size ('n', 's', 'm', 'l', 'x')
+            model_path (str): Path or model name (e.g., 'yolov8n.pt', 'yolov10n.pt', 'yolo11n.pt', 'yolo12n.pt')
             confidence_threshold (float): Minimum confidence for detections
         """
         try:
-            self.model_size = model_size
+            self.model_path = model_path
             self.confidence_threshold = confidence_threshold
-            
-            # Load pretrained YOLOv8 model
-            model_name = f'yolov8{model_size}.pt'
-            self.model = YOLO(model_name)
-            
+
+            # Load pretrained YOLO model
+            self.model = YOLO(model_path)
+
             # Enable GPU if available
             self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-            logger.info(f"YOLOv8{model_size} loaded on {self.device}")
-            
-            # Model quantization for efficiency (CPU only)
+            logger.info(f"{model_path} loaded on {self.device}")
+
+            # Quantization for CPU efficiency
             if self.device == 'cpu':
                 try:
                     self.model.model = torch.quantization.quantize_dynamic(
                         self.model.model, {torch.nn.Linear}, dtype=torch.qint8
                     )
-                    logger.info("YOLOv8 model quantized for CPU efficiency")
+                    logger.info(f"{model_path} quantized for CPU efficiency")
                 except Exception as e:
                     logger.warning(f"Quantization failed: {e}")
-            
+
         except Exception as e:
-            logger.error(f"Failed to load YOLOv8: {e}")
-            raise ModelLoadError(f"YOLOv8 initialization failed: {e}")
-    
+            logger.error(f"Failed to load {model_path}: {e}")
+            raise ModelLoadError(f"{model_path} initialization failed: {e}")
+
     def preprocess_image(self, image):
         """
-        Preprocess image for YOLOv8 inference
-        
-        Args:
-            image (np.ndarray): Input image in BGR format
-            
-        Returns:
-            np.ndarray: Preprocessed image
+        Preprocess image for YOLO inference
         """
-        # YOLOv8 handles preprocessing internally, but we can optimize input size
         height, width = image.shape[:2]
-        
-        # Resize if image is too large (optimization)
         max_size = 1280
         if max(height, width) > max_size:
             scale = max_size / max(height, width)
             new_width = int(width * scale)
             new_height = int(height * scale)
             image = cv2.resize(image, (new_width, new_height), interpolation=cv2.INTER_LINEAR)
-        
         return image
-    
+
     def detect(self, image):
         """
-        Perform vehicle detection on image
-        
-        Args:
-            image (np.ndarray): Input image in BGR format
-            
-        Returns:
-            list: List of detections with format:
-                  [{'bbox': [x1,y1,x2,y2], 'cls': int, 'conf': float, 'cls_name': str}]
+        Perform vehicle detection
         """
         try:
-            # Preprocess image
             processed_image = self.preprocess_image(image)
-            
-            # Run inference
-            results = self.model(processed_image, conf=self.confidence_threshold, verbose=False)
-            
-            # Parse results
+
+            results = self.model(
+                processed_image,
+                conf=self.confidence_threshold,
+                verbose=False
+            )
+
             detections = []
             for result in results:
                 boxes = result.boxes
                 if boxes is not None:
                     for i in range(len(boxes)):
-                        # Get bounding box coordinates
                         xyxy = boxes.xyxy[i].cpu().numpy()
                         confidence = float(boxes.conf[i].cpu().numpy())
                         class_id = int(boxes.cls[i].cpu().numpy())
-                        
-                        # Filter for vehicle classes only
                         class_name = self.model.names[class_id]
+
+                        # Only keep vehicle classes
                         if class_name in ['car', 'motorcycle', 'bus', 'truck']:
-                            detection = {
+                            detections.append({
                                 'bbox': [float(xyxy[0]), float(xyxy[1]), float(xyxy[2]), float(xyxy[3])],
                                 'cls': class_id,
                                 'conf': confidence,
                                 'cls_name': class_name
-                            }
-                            detections.append(detection)
-            
-            logger.info(f"YOLOv8 detected {len(detections)} vehicles")
+                            })
+
+            logger.info(f"{self.model_path} detected {len(detections)} vehicles")
             return detections
-            
+
         except Exception as e:
-            logger.error(f"YOLOv8 detection error: {e}")
+            logger.error(f"{self.model_path} detection error: {e}")
             return []
+
+
+# Convenience subclasses (so you can instantiate without typing full model path)
+
+class YOLOv8Detector(YOLODetector):
+    def __init__(self, model_size='n', confidence_threshold=0.5):
+        super().__init__(model_path=f"yolov8{model_size}.pt", confidence_threshold=confidence_threshold)
+
+class YOLOv10Detector(YOLODetector):
+    def __init__(self, model_size='n', confidence_threshold=0.5):
+        super().__init__(model_path=f"yolov10{model_size}.pt", confidence_threshold=confidence_threshold)
+
+class YOLOv11Detector(YOLODetector):
+    def __init__(self, model_size='n', confidence_threshold=0.5):
+        super().__init__(model_path=f"yolo11{model_size}.pt", confidence_threshold=confidence_threshold)
+
+class YOLOv12Detector(YOLODetector):
+    def __init__(self, model_size='n', confidence_threshold=0.5):
+        super().__init__(model_path=f"yolo12{model_size}.pt", confidence_threshold=confidence_threshold)
 
 class FasterRCNN:
     """
