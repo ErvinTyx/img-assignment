@@ -1,6 +1,7 @@
 import numpy as np
 import cv2
 from shapely.geometry import Point, Polygon
+from shapely.geometry import Polygon, box
 from shapely.errors import TopologicalError
 import logging
 from typing import List, Dict, Tuple, Any
@@ -30,10 +31,11 @@ class ZoneAnalyzer:
         
         # Define allowed vehicles per zone type
         self.zone_rules = {
-            'vip': ['car'],
-            'standard': ['car'],
+            'vip': ['car', 'motorcycle'],
+            'standard': ['car', 'motorcycle', 'bus', 'truck'],
             'handicap': ['car'],  # Requires special validation
             'no_parking': [],     # No vehicles allowed
+            'loading': ['truck', 'bus'],  # Commercial vehicles only
         }
         
         # Violation severity levels
@@ -46,47 +48,48 @@ class ZoneAnalyzer:
         }
         
         logger.info("Zone analyzer initialized with business rules")
-        
-    def normalize_zone_type(self, zone_type: str) -> str:
-        """Normalize zone type for internal comparison"""
-        return zone_type.strip().replace("-", "_").replace(" ", "_").lower()
-
     
     def validate_zone_definition(self, zone: Dict[str, Any]) -> bool:
+        """
+        Validate zone definition structure and geometry
+        
+        Args:
+            zone (dict): Zone definition with points and metadata
+            
+        Returns:
+            bool: True if zone is valid
+            
+        Raises:
+            ZoneDefinitionError: If zone definition is invalid
+        """
         required_fields = ['id', 'type', 'points']
-
+        
         # Check required fields
         for field in required_fields:
             if field not in zone:
                 raise ZoneDefinitionError(f"Missing required field: {field}")
-
-        # Normalize and debug log
-        raw_type = zone['type']
-        zone_type = self.normalize_zone_type(raw_type)
-        print(f"[DEBUG] Zone ID: {zone.get('id')} | Raw type: '{raw_type}' | Normalized: '{zone_type}'")
-
-        if zone_type not in self.zone_rules:
-            raise ZoneDefinitionError(f"Invalid zone type: {raw_type}")
-
-        # Replace with normalized type
-        zone['type'] = zone_type
-
+        
+        # Validate zone type
+        if zone['type'] not in self.zone_rules:
+            raise ZoneDefinitionError(f"Invalid zone type: {zone['type']}")
+        
         # Validate points (must have at least 3 points for polygon)
         points = zone['points']
         if not isinstance(points, list) or len(points) < 3:
             raise ZoneDefinitionError("Zone must have at least 3 points")
-
+        
+        # Validate point structure
         for i, point in enumerate(points):
             if not isinstance(point, (list, tuple)) or len(point) != 2:
                 raise ZoneDefinitionError(f"Point {i} must be [x, y] coordinates")
+            
             try:
                 float(point[0])
                 float(point[1])
             except (ValueError, TypeError):
                 raise ZoneDefinitionError(f"Point {i} coordinates must be numeric")
-
+        
         return True
-
     
     def create_polygon_from_zone(self, zone: Dict[str, Any]) -> Polygon:
         """
@@ -206,88 +209,53 @@ class ZoneAnalyzer:
         
         return result
     
-    def check_violations(self, zones: List[Dict], detections: List[Dict]) -> List[Dict]:
-        """
-        Check for parking violations across all zones and detections
-        
-        Args:
-            zones (list): List of zone definitions
-            detections (list): List of vehicle detections
-            
-        Returns:
-            list: List of violation records
-            
-        BUSINESS RULE: Each violation must be documented with zone, vehicle, and violation type
-        """
-        violations = []
-        
-        if not zones or not detections:
-            logger.info("No zones or detections provided for violation checking")
-            return violations
-        
-        try:
-            # Validate and create polygons for all zones
-            zone_polygons = {}
-            for zone in zones:
-                try:
-                    self.validate_zone_definition(zone)
-                    zone_polygons[zone['id']] = {
-                        'polygon': self.create_polygon_from_zone(zone),
-                        'type': zone['type'], 
-                        'metadata': zone.get('metadata', {})
 
+    def detect_violations(self, detections, zones):
+        violations = []
+
+        print("\n=== DEBUG: Starting Violation Check ===")
+
+        for idx, det in enumerate(detections):
+            x1, y1, x2, y2 = det["bbox"]
+            vehicle_box = box(x1, y1, x2, y2)
+
+            print(f"\n[Vehicle {idx}]")
+            print(f" - Type: {det['cls_name']}")
+            print(f" - Confidence: {det['conf']:.2f}")
+            print(f" - BBox: ({x1:.1f}, {y1:.1f}) to ({x2:.1f}, {y2:.1f})")
+
+            for z_idx, zone in enumerate(zones):
+                zone_type = zone.get("type", "unknown")
+                zone_points = zone.get("points", [])
+
+                if len(zone_points) < 3:
+                    print(f"   > Skipping zone {z_idx}: Less than 3 points")
+                    continue
+
+                zone_polygon = Polygon(zone_points)
+
+                print(f"   > Checking against zone {z_idx} (type: {zone_type})")
+                print(f"     - Zone points: {zone_points[:2]}... (total: {len(zone_points)})")
+
+                if vehicle_box.intersects(zone_polygon):
+                    print("     --> INTERSECTS → Marked as violation ✅")
+
+                    violation = {
+                        "vehicle_detection_idx": idx,
+                        "violation_type": "zone_violation",
+                        "zone_type": zone_type,
+                        "vehicle_type": det["cls_name"],
+                        "vehicle_confidence": det["conf"],
+                        "severity": "critical" if zone_type == "no-parking" else "high",
+                        "message": f"Vehicle parked in {zone_type.replace('-', ' ').title()} zone"
                     }
-                except ZoneDefinitionError as e:
-                    logger.error(f"Invalid zone {zone.get('id', 'unknown')}: {e}")
-                    continue
-            
-            logger.info(f"Processing {len(detections)} detections against {len(zone_polygons)} valid zones")
-            
-            # Check each detection against all zones
-            for detection_idx, detection in enumerate(detections):
-                try:
-                    vehicle_centroid = self.calculate_vehicle_centroid(detection['bbox'])
-                    vehicle_type = detection.get('cls_name', 'unknown')
-                    
-                    # Check against each zone
-                    for zone_id, zone_data in zone_polygons.items():
-                        if self.is_point_in_zone(vehicle_centroid, zone_data['polygon']):
-                            # Vehicle is in this zone - check authorization
-                            auth_result = self.check_vehicle_authorization(
-                                vehicle_type, 
-                                zone_data['type'],
-                                zone_data['metadata']
-                            )
-                            
-                            if not auth_result['authorized']:
-                                violation = {
-                                    'id': f"violation_{len(violations) + 1}",
-                                    'zone_id': zone_id,
-                                    'zone_type': zone_data['type'],
-                                    'vehicle_detection_idx': detection_idx,
-                                    'vehicle_type': vehicle_type,
-                                    'vehicle_bbox': detection['bbox'],
-                                    'vehicle_centroid': vehicle_centroid,
-                                    'vehicle_confidence': detection.get('conf', 0.0),
-                                    'violation_type': auth_result['violation_type'],
-                                    'severity': auth_result['severity'],
-                                    'message': auth_result['message'],
-                                    'timestamp': None 
-                                }
-                                violations.append(violation)
-                                
-                                logger.info(f"Violation detected: {violation['message']}")
-                
-                except Exception as e:
-                    logger.error(f"Error processing detection {detection_idx}: {e}")
-                    continue
-            
-            logger.info(f"Found {len(violations)} total violations")
-            return violations
-            
-        except Exception as e:
-            logger.error(f"Violation checking failed: {e}")
-            return []
+                    violations.append(violation)
+                    break  # Only one zone violation per vehicle
+                else:
+                    print("     --> NO INTERSECTION ❌")
+
+        print(f"\n=== DEBUG: Violation check completed. Total violations: {len(violations)} ===\n")
+        return violations
     
     def generate_violation_report(self, violations: List[Dict]) -> Dict[str, Any]:
         """
